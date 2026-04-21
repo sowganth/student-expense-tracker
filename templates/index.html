@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Student Expense Tracker — Track and manage your daily expenses easily.">
+    <title>Student Expense Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="bg-blobs"><div class="blob"></div><div class="blob"></div><div class="blob"></div></div>
+    <div class="page-wrapper">
+        <!-- Navbar for landing -->
+        <nav class="navbar">
+            <div class="container">
+                <a href="{{ url_for('index') }}" class="navbar-brand">
+                    <span class="logo-icon">💰</span>
+                    ExpenseTracker
+                </a>
+                <ul class="nav-links">
+                    <li><a href="{{ url_for('login') }}">Login</a></li>
+                    <li><a href="{{ url_for('register') }}" class="btn-nav">Get Started</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Hero Section -->
+        <section class="hero">
+            <div>
+                <h1>Take Control of Your<br><span class="gradient-text">Student Finances</span></h1>
+                <p>Track every rupee, categorize your spending, and build smart money habits. The simplest expense tracker built for students.</p>
+                <div class="hero-buttons">
+                    <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg">🚀 Start Tracking Free</a>
+                    <a href="{{ url_for('login') }}" class="btn btn-secondary btn-lg">Sign In</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features -->
+        <div class="container">
+            <div class="features-grid">
+                <div class="card feature-card fade-in">
+                    <div class="feat-icon stat-icon red">📝</div>
+                    <h3>Record Expenses</h3>
+                    <p>Quickly log your daily spending with amount, category, date and description in seconds.</p>
+                </div>
+                <div class="card feature-card fade-in">
+                    <div class="feat-icon stat-icon purple">📊</div>
+                    <h3>Smart Analytics</h3>
+                    <p>Visual charts and category breakdowns help you understand where your money goes.</p>
+                </div>
+                <div class="card feature-card fade-in">
+                    <div class="feat-icon stat-icon green">🔍</div>
+                    <h3>Filter & Search</h3>
+                    <p>Find any expense instantly with powerful filters by date range, category, and sorting.</p>
+                </div>
+                <div class="card feature-card fade-in">
+                    <div class="feat-icon stat-icon blue">🔒</div>
+                    <h3>Secure & Private</h3>
+                    <p>Your data is protected with encrypted passwords and personal accounts.</p>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p>© 2026 Student Expense Tracker — Built with ❤️ using Flask</p>
+        </footer>
+    </div>
+</body>
+</html>

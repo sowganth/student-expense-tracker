@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}View Expenses — Student Expense Tracker{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <div>
+            <h1>📋 Expense History</h1>
+            <span class="breadcrumb">{{ expenses|length }} expenses · Total: ₹{{ "%.2f"|format(filtered_total) }}</span>
+        </div>
+        <a href="{{ url_for('add_expense') }}" class="btn btn-primary btn-sm">➕ Add Expense</a>
+    </div>
+
+    <!-- Filters -->
+    <form class="filter-bar" method="GET" action="{{ url_for('view_expenses') }}">
+        <div class="form-group">
+            <label>Category</label>
+            <select name="category" class="form-control">
+                <option value="">All Categories</option>
+                {% for cat in all_categories %}
+                <option value="{{ cat['category'] }}" {{ 'selected' if filter_category == cat['category'] }}>{{ cat['category'] }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>From Date</label>
+            <input type="date" name="date_from" class="form-control" value="{{ filter_date_from }}">
+        </div>
+        <div class="form-group">
+            <label>To Date</label>
+            <input type="date" name="date_to" class="form-control" value="{{ filter_date_to }}">
+        </div>
+        <div class="form-group">
+            <label>Sort By</label>
+            <select name="sort" class="form-control">
+                <option value="date_desc" {{ 'selected' if sort_by == 'date_desc' }}>Date (Newest)</option>
+                <option value="date_asc" {{ 'selected' if sort_by == 'date_asc' }}>Date (Oldest)</option>
+                <option value="amount_desc" {{ 'selected' if sort_by == 'amount_desc' }}>Amount (High→Low)</option>
+                <option value="amount_asc" {{ 'selected' if sort_by == 'amount_asc' }}>Amount (Low→High)</option>
+                <option value="category" {{ 'selected' if sort_by == 'category' }}>Category</option>
+            </select>
+        </div>
+        <div class="form-group" style="display: flex; gap: 8px; align-self: flex-end;">
+            <button type="submit" class="btn btn-primary btn-sm">🔍 Filter</button>
+            <a href="{{ url_for('view_expenses') }}" class="btn btn-secondary btn-sm">Clear</a>
+        </div>
+    </form>
+
+    <!-- Expenses Table -->
+    {% if expenses %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set cat_class = {'Food': 'food', 'Travel': 'travel', 'Shopping': 'shopping', 'Education': 'education', 'Entertainment': 'entertainment', 'Health': 'health', 'Bills': 'bills', 'Other': 'other'} %}
+                {% for exp in expenses %}
+                <tr>
+                    <td style="color: var(--text-muted);">{{ loop.index }}</td>
+                    <td>{{ exp['date'] }}</td>
+                    <td><span class="category-badge {{ cat_class.get(exp['category'], 'other') }}">{{ exp['category'] }}</span></td>
+                    <td>{{ exp['description'] or '—' }}</td>
+                    <td class="amount">₹{{ "%.2f"|format(exp['amount']) }}</td>
+                    <td>
+                        <div class="actions-cell">
+                            <a href="{{ url_for('edit_expense', expense_id=exp['id']) }}" class="btn btn-secondary btn-sm">✏️</a>
+                            <form method="POST" action="{{ url_for('delete_expense', expense_id=exp['id']) }}" style="display:inline;" onsubmit="return confirm('Delete this expense?');">
+                                <button type="submit" class="btn btn-danger btn-sm">🗑️</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <h3>No expenses found</h3>
+        <p>{% if filter_category or filter_date_from or filter_date_to %}Try adjusting your filters.{% else %}Start by adding your first expense.{% endif %}</p>
+        <a href="{{ url_for('add_expense') }}" class="btn btn-primary">➕ Add Expense</a>
+    </div>
+    {% endif %}
+</div>
+<div style="height: 40px;"></div>
+{% endblock %}

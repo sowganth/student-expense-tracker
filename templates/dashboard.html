@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Student Expense Tracker{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <div>
+            <h1>👋 Hello, {{ session.get('user_name', 'Student') }}!</h1>
+            <span class="breadcrumb">Here's your expense overview</span>
+        </div>
+        <a href="{{ url_for('add_expense') }}" class="btn btn-primary">➕ Add Expense</a>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card fade-in">
+            <div class="stat-glow red"></div>
+            <div class="stat-icon red">💸</div>
+            <div class="stat-value">₹{{ "%.2f"|format(total) }}</div>
+            <div class="stat-label">Total Spending</div>
+        </div>
+        <div class="stat-card fade-in">
+            <div class="stat-glow purple"></div>
+            <div class="stat-icon purple">📅</div>
+            <div class="stat-value">₹{{ "%.2f"|format(monthly) }}</div>
+            <div class="stat-label">This Month</div>
+        </div>
+        <div class="stat-card fade-in">
+            <div class="stat-glow green"></div>
+            <div class="stat-icon green">☀️</div>
+            <div class="stat-value">₹{{ "%.2f"|format(daily) }}</div>
+            <div class="stat-label">Today</div>
+        </div>
+        <div class="stat-card fade-in">
+            <div class="stat-glow blue"></div>
+            <div class="stat-icon blue">🧾</div>
+            <div class="stat-value">{{ expense_count }}</div>
+            <div class="stat-label">Total Entries</div>
+        </div>
+    </div>
+
+    <!-- Category Breakdown -->
+    {% if categories %}
+    <h2 class="section-title"><span class="icon">📂</span> Category Breakdown</h2>
+    <div class="category-grid" style="margin-bottom: 30px;">
+        {% set cat_icons = {'Food': '🍔', 'Travel': '🚌', 'Shopping': '🛍️', 'Education': '📚', 'Entertainment': '🎮', 'Health': '💊', 'Bills': '📄', 'Other': '📦'} %}
+        {% set cat_colors = {'Food': 'rgba(255,179,71,0.15)', 'Travel': 'rgba(91,192,222,0.15)', 'Shopping': 'rgba(83,52,131,0.2)', 'Education': 'rgba(0,200,151,0.15)', 'Entertainment': 'rgba(233,69,96,0.15)', 'Health': 'rgba(236,72,153,0.15)', 'Bills': 'rgba(251,191,36,0.15)', 'Other': 'rgba(255,255,255,0.08)'} %}
+        {% for cat in categories %}
+        <div class="category-card fade-in">
+            <div class="cat-icon" style="background: {{ cat_colors.get(cat['category'], 'rgba(255,255,255,0.08)') }};">
+                {{ cat_icons.get(cat['category'], '📦') }}
+            </div>
+            <div class="cat-info">
+                <div class="cat-name">{{ cat['category'] }}</div>
+                <div class="cat-amount">₹{{ "%.2f"|format(cat['total']) }} · {{ cat['count'] }} entries</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Charts -->
+    <div class="charts-grid">
+        <div class="chart-card">
+            <h3>📊 Last 7 Days Spending</h3>
+            <div id="daily-chart" class="bar-chart"></div>
+        </div>
+        <div class="chart-card">
+            <h3>🥧 Category Distribution</h3>
+            <div id="category-chart">
+                {% if categories %}
+                {% set colors = ['#e94560', '#533483', '#00c897', '#ffb347', '#5bc0de', '#f472b6', '#fbbf24', '#a78bfa'] %}
+                <div class="donut-legend">
+                    {% for cat in categories %}
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background: {{ colors[loop.index0 % 8] }};"></div>
+                        {{ cat['category'] }}: ₹{{ "%.0f"|format(cat['total']) }}
+                        {% if total > 0 %}({{ "%.0f"|format(cat['total'] / total * 100) }}%){% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <!-- Simple bar representation for categories -->
+                <div style="margin-top: 16px;">
+                    {% for cat in categories %}
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                        <span style="font-size: 0.8rem; color: var(--text-muted); width: 90px; flex-shrink: 0;">{{ cat['category'] }}</span>
+                        <div style="flex: 1; height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden;">
+                            <div style="height: 100%; width: {{ (cat['total'] / total * 100) if total > 0 else 0 }}%; background: {{ colors[loop.index0 % 8] }}; border-radius: 4px; transition: width 0.6s ease;"></div>
+                        </div>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">₹{{ "%.0f"|format(cat['total']) }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <p>No expenses yet. Add your first expense!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Expenses -->
+    <div style="margin-top: 30px; margin-bottom: 40px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h2 class="section-title" style="margin-bottom: 0;"><span class="icon">🕐</span> Recent Expenses</h2>
+            {% if recent %}
+            <a href="{{ url_for('view_expenses') }}" class="btn btn-secondary btn-sm">View All →</a>
+            {% endif %}
+        </div>
+        {% if recent %}
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Category</th>
+                        <th>Description</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set cat_class = {'Food': 'food', 'Travel': 'travel', 'Shopping': 'shopping', 'Education': 'education', 'Entertainment': 'entertainment', 'Health': 'health', 'Bills': 'bills', 'Other': 'other'} %}
+                    {% for exp in recent %}
+                    <tr>
+                        <td>{{ exp['date'] }}</td>
+                        <td><span class="category-badge {{ cat_class.get(exp['category'], 'other') }}">{{ exp['category'] }}</span></td>
+                        <td>{{ exp['description'] or '—' }}</td>
+                        <td class="amount">₹{{ "%.2f"|format(exp['amount']) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <h3>No expenses yet</h3>
+            <p>Start tracking your spending by adding your first expense.</p>
+            <a href="{{ url_for('add_expense') }}" class="btn btn-primary">➕ Add First Expense</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Fetch daily chart data
+fetch('{{ url_for("chart_data") }}')
+    .then(r => r.json())
+    .then(data => {
+        const container = document.getElementById('daily-chart');
+        if (!data.daily || data.daily.length === 0) { container.innerHTML = '<p style="color:var(--text-muted)">No data</p>'; return; }
+        const maxVal = Math.max(...data.daily.map(d => d.total), 1);
+        container.innerHTML = data.daily.map(d => {
+            const h = Math.max((d.total / maxVal) * 160, 4);
+            return `<div class="bar-item">
+                <span class="bar-value">${d.total > 0 ? '₹' + d.total.toFixed(0) : ''}</span>
+                <div class="bar" style="height:${h}px"></div>
+                <span class="bar-label">${d.date}</span>
+            </div>`;
+        }).join('');
+    });
+</script>
+{% endblock %}

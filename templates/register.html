@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register — Student Expense Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="bg-blobs"><div class="blob"></div><div class="blob"></div><div class="blob"></div></div>
+    <div class="page-wrapper">
+        <div class="auth-wrapper">
+            <div class="auth-card fade-in">
+                <h1>Create Account</h1>
+                <p class="subtitle">Start tracking your expenses today</p>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                    <div class="flash-msg {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                <form method="POST" action="{{ url_for('register') }}">
+                    <div class="form-group">
+                        <label for="name">Full Name</label>
+                        <input type="text" id="name" name="name" class="form-control" placeholder="John Doe" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" name="email" class="form-control" placeholder="john@college.edu" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" class="form-control" placeholder="Min 6 characters" required minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm_password">Confirm Password</label>
+                        <input type="password" id="confirm_password" name="confirm_password" class="form-control" placeholder="Re-enter password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">🚀 Create Account</button>
+                </form>
+                <div class="auth-footer">
+                    Already have an account? <a href="{{ url_for('login') }}">Sign In</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
