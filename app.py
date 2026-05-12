@@ -12,49 +12,109 @@ app.secret_key = os.environ.get('SECRET_KEY', 'student_expense_tracker_secret_ke
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
 
 # ─── Database Helper ───────────────────────────────────────────────
-def get_db():
-    """Get a PostgreSQL database connection."""
-    conn = psycopg2.connect(DATABASE_URL)
-    return conn
+if DATABASE_URL.startswith('postgres'):
+    import psycopg2
+    import psycopg2.extras
+    DB_TYPE = 'postgres'
+    DBError = psycopg2.Error
 
-def get_cursor(conn):
-    """Return a dict-like cursor."""
-    return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    def get_db():
+        """Get a PostgreSQL database connection."""
+        return psycopg2.connect(DATABASE_URL)
+
+    def get_cursor(conn):
+        """Return a dict-like cursor."""
+        return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+    try:
+        UniqueViolation = psycopg2.errors.UniqueViolation
+    except AttributeError:
+        class UniqueViolation(Exception): pass
+else:
+    import sqlite3
+    DB_TYPE = 'sqlite'
+    DBError = sqlite3.Error
+
+    def get_db():
+        conn = sqlite3.connect('database.db')
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    class SQLiteCursorWrapper:
+        def __init__(self, cursor):
+            self.cursor = cursor
+        def execute(self, query, params=None):
+            if params is None: params = ()
+            # Replace PostgreSQL %s with SQLite ?
+            query = query.replace('%s', '?')
+            return self.cursor.execute(query, params)
+        def fetchone(self):
+            row = self.cursor.fetchone()
+            return dict(row) if row else None
+        def fetchall(self):
+            return [dict(row) for row in self.cursor.fetchall()]
+        def close(self):
+            self.cursor.close()
+
+    def get_cursor(conn):
+        return SQLiteCursorWrapper(conn.cursor())
+
+    UniqueViolation = sqlite3.IntegrityError
 
 def init_db():
     """Initialize the database with tables (safe to call on every cold start)."""
     conn = get_db()
-    cursor = conn.cursor()
+    cursor = get_cursor(conn)
 
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS expenses (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            amount REAL NOT NULL,
-            category TEXT NOT NULL,
-            date TEXT NOT NULL,
-            description TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+    if DB_TYPE == 'postgres':
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS expenses (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                amount REAL NOT NULL,
+                category TEXT NOT NULL,
+                date TEXT NOT NULL,
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+    else:
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS expenses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                amount REAL NOT NULL,
+                category TEXT NOT NULL,
+                date TEXT NOT NULL,
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
 
     conn.commit()
     cursor.close()
     conn.close()
 
-# Initialize database on startup
-if DATABASE_URL:
-    init_db()
+# Always initialize database on startup
+init_db()
 
 # ─── Login Required Decorator ─────────────────────────────────────
 def login_required(f):
@@ -65,6 +125,21 @@ def login_required(f):
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
+
+# ─── Global Error Handlers & Checks ───────────────────────────────
+@app.errorhandler(DBError)
+def handle_db_error(e):
+    """Handle database errors gracefully instead of returning 500."""
+    print(f"Database Error: {e}")
+    flash('A database connection error occurred. Please check your database configuration.', 'error')
+    return redirect(url_for('index'))
+
+@app.errorhandler(Exception)
+def handle_general_error(e):
+    """Handle general errors gracefully."""
+    print(f"Application Error: {e}")
+    flash(f'An internal application error occurred: {e}', 'error')
+    return redirect(url_for('index'))
 
 # ─── Routes ────────────────────────────────────────────────────────
 
@@ -106,7 +181,7 @@ def register():
             conn.commit()
             flash('Registration successful! Please log in.', 'success')
             return redirect(url_for('login'))
-        except psycopg2.errors.UniqueViolation:
+        except UniqueViolation:
             conn.rollback()
             flash('Email already registered.', 'error')
         finally:
